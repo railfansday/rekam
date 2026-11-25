@@ -28,7 +28,7 @@ jobs:
           YOUTUBE_URL: "https://www.youtube.com/watch?v=WoPPdHzudbU&pp=ygULbWljaGFlbCBsaXU%3D"
           OUTPUT_FILE: "rekaman_layar.mp4"
           DURATION_SECONDS: "1300"
-          FPS: "15"
+          FPS: "5"
           WAIT_BEFORE_RECORD: "6"
         run: |
           xvfb-run -a --server-args="-screen 0 1280x720x24" python -u - << 'EOF'
