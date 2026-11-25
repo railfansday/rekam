@@ -26,10 +26,10 @@ jobs:
 
       - name: Run screen recorder script
         env:
-          YOUTUBE_URL: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+          YOUTUBE_URL: "https://rojadirectago.org/embed/eventos.html?r=aHR0cHM6Ly90di05MC5jb20vZHJtL3RudHNwb3J0czQucGhw"
           OUTPUT_FILE: "rekaman_layar.mp4"
           DURATION_SECONDS: "15"
-          FPS: "60"
+          FPS: "15"
           WAIT_BEFORE_RECORD: "6"
           SCREEN_WIDTH: "1920"
           SCREEN_HEIGHT: "1080"
