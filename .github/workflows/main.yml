@@ -1,0 +1,102 @@
+name: Rekam Layar YouTube (Single Workflow)
+
+on:
+  workflow_dispatch:
+  # Aktifkan jadwal jika diperlukan (UTC):
+  # schedule:
+  #   - cron: "0 3 * * *"
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies & Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          python -m pip install --upgrade pip
+          pip install mss numpy opencv-python
+
+      - name: Run screen recorder script
+        env:
+          YOUTUBE_URL: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+          OUTPUT_FILE: "rekaman_layar.mp4"
+          DURATION_SECONDS: "15"
+          FPS: "15"
+          WAIT_BEFORE_RECORD: "6"
+        run: |
+          xvfb-run -a --server-args="-screen 0 1280x720x24" python -u - << 'EOF'
+          import os
+          import time
+          import webbrowser
+          import cv2
+          import mss
+          import numpy as np
+
+          url = os.getenv("YOUTUBE_URL", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+          output_path = os.getenv("OUTPUT_FILE", "rekaman_layar.mp4")
+          duration = int(os.getenv("DURATION_SECONDS", "15"))
+          fps = float(os.getenv("FPS", "15"))
+          wait_sec = int(os.getenv("WAIT_BEFORE_RECORD", "6"))
+          monitor_index = 1
+
+          print(f"[INFO] Membuka: {url}")
+          webbrowser.open(url)
+
+          print(f"[INFO] Menunggu {wait_sec} detik agar halaman/video siap...")
+          time.sleep(wait_sec)
+
+          with mss.mss() as sct:
+              monitors = sct.monitors
+              if monitor_index < 1 or monitor_index >= len(monitors):
+                  monitor_index = 1
+
+              monitor = monitors[monitor_index]
+              width = monitor["width"] - (monitor["width"] % 2)
+              height = monitor["height"] - (monitor["height"] % 2)
+
+              fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+              writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+              print(f"[START] Merekam {width}x{height} selama {duration} detik ke '{output_path}'...")
+              frame_interval = 1.0 / fps
+              start_time = time.time()
+              next_frame_time = start_time
+              frames_written = 0
+
+              try:
+                  while True:
+                      now = time.time()
+                      if now - start_time >= duration:
+                          break
+
+                      if now >= next_frame_time:
+                          raw = np.array(sct.grab(monitor))
+                          frame = cv2.cvtColor(raw, cv2.COLOR_BGRA2BGR)
+                          if frame.shape[1] != width or frame.shape[0] != height:
+                              frame = cv2.resize(frame, (width, height))
+
+                          writer.write(frame)
+                          frames_written += 1
+                          next_frame_time += frame_interval
+                      else:
+                          time.sleep(min(0.005, next_frame_time - now))
+              finally:
+                  writer.release()
+
+              print(f"[DONE] Selesai. Total frame tersimpan: {frames_written} -> {output_path}")
+          EOF
+
+      - name: Upload recorded video
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hasil-rekaman-yt
+          path: rekaman_layar.mp4
+          if-no-files-found: ignore
