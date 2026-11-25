@@ -25,7 +25,7 @@ jobs:
 
       - name: Run screen recorder script
         env:
-          YOUTUBE_URL: "https://www.rctiplus.com/tv/rcti"
+          YOUTUBE_URL: "https://www.youtube.com/watch?v=WoPPdHzudbU&pp=ygULbWljaGFlbCBsaXU%3D"
           OUTPUT_FILE: "rekaman_layar.mp4"
           DURATION_SECONDS: "300"
           FPS: "15"
