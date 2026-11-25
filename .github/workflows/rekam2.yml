@@ -26,7 +26,7 @@ jobs:
 
       - name: Run screen recorder script
         env:
-          TARGET_URL: "https://rojadirectago.org/embed/eventos.html?r=aHR0cHM6Ly90dmY5MC5jb20vMy5waHA/c3RyZWFtPWVzcG4="
+          TARGET_URL: "https://rojadirectago.org/embed/eventos.html?r=aHR0cHM6Ly90di05MC5jb20vZHJtL3RudHNwb3J0czIucGhw"
           OUTPUT_FILE: "rekaman_layar.mp4"
           DURATION_SECONDS: "7200"
           FPS: "15"
