@@ -1,8 +1,7 @@
-name: Rekam Layar YouTube (Single Workflow)
+name: Rekam Layar YouTube (Fixed)
 
 on:
   workflow_dispatch:
-  # Aktifkan jadwal jika diperlukan (UTC):
   # schedule:
   #   - cron: "0 3 * * *"
 
@@ -16,16 +15,17 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install dependencies & Xvfb
+      - name: Install dependencies, Xvfb & Playwright Chromium
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb
+          sudo apt-get install -y xvfb libgbm1 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libpango-1.0-0 libcairo2 libasound2t64 || true
           python -m pip install --upgrade pip
-          pip install mss numpy opencv-python
+          pip install mss numpy opencv-python playwright
+          python -m playwright install chromium
 
       - name: Run screen recorder script
         env:
-          YOUTUBE_URL: "https://rojadirectago.org/embed/eventos.html?r=aHR0cHM6Ly90dmY5MC5jb20vMS5waHA/c3RyZWFtPWRpc25leTE="
+          YOUTUBE_URL: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
           OUTPUT_FILE: "rekaman_layar.mp4"
           DURATION_SECONDS: "15"
           FPS: "15"
@@ -34,62 +34,78 @@ jobs:
           xvfb-run -a --server-args="-screen 0 1280x720x24" python -u - << 'EOF'
           import os
           import time
-          import webbrowser
           import cv2
           import mss
           import numpy as np
+          from playwright.sync_api import sync_playwright
 
-          url = os.getenv("YOUTUBE_URL", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+          url = os.getenv("YOUTUBE_URL", "https://rojadirectago.org/embed/eventos.html?r=aHR0cHM6Ly90dmY5MC5jb20vMS5waHA/c3RyZWFtPWRpc25leTE=")
           output_path = os.getenv("OUTPUT_FILE", "rekaman_layar.mp4")
           duration = int(os.getenv("DURATION_SECONDS", "15"))
           fps = float(os.getenv("FPS", "15"))
           wait_sec = int(os.getenv("WAIT_BEFORE_RECORD", "6"))
           monitor_index = 1
 
-          print(f"[INFO] Membuka: {url}")
-          webbrowser.open(url)
+          with sync_playwright() as p:
+              browser = p.chromium.launch(
+                  headless=False,
+                  args=[
+                      "--no-first-run",
+                      "--no-default-browser-check",
+                      "--disable-infobars",
+                      "--autoplay-policy=no-user-gesture-required",
+                      "--window-position=0,0",
+                      "--window-size=1280,720",
+                  ],
+              )
+              context = browser.new_context(viewport={"width": 1280, "height": 720})
+              page = context.new_page()
 
-          print(f"[INFO] Menunggu {wait_sec} detik agar halaman/video siap...")
-          time.sleep(wait_sec)
+              print(f"[INFO] Membuka: {url}")
+              page.goto(url, wait_until="domcontentloaded", timeout=60000)
 
-          with mss.mss() as sct:
-              monitors = sct.monitors
-              if monitor_index < 1 or monitor_index >= len(monitors):
-                  monitor_index = 1
+              print(f"[INFO] Menunggu {wait_sec} detik agar halaman/player siap...")
+              time.sleep(wait_sec)
 
-              monitor = monitors[monitor_index]
-              width = monitor["width"] - (monitor["width"] % 2)
-              height = monitor["height"] - (monitor["height"] % 2)
+              with mss.mss() as sct:
+                  monitors = sct.monitors
+                  if monitor_index < 1 or monitor_index >= len(monitors):
+                      monitor_index = 1
 
-              fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-              writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+                  monitor = monitors[monitor_index]
+                  width = monitor["width"] - (monitor["width"] % 2)
+                  height = monitor["height"] - (monitor["height"] % 2)
 
-              print(f"[START] Merekam {width}x{height} selama {duration} detik ke '{output_path}'...")
-              frame_interval = 1.0 / fps
-              start_time = time.time()
-              next_frame_time = start_time
-              frames_written = 0
+                  fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                  writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-              try:
-                  while True:
-                      now = time.time()
-                      if now - start_time >= duration:
-                          break
+                  print(f"[START] Merekam {width}x{height} selama {duration} detik ke '{output_path}'...")
+                  frame_interval = 1.0 / fps
+                  start_time = time.time()
+                  next_frame_time = start_time
+                  frames_written = 0
 
-                      if now >= next_frame_time:
-                          raw = np.array(sct.grab(monitor))
-                          frame = cv2.cvtColor(raw, cv2.COLOR_BGRA2BGR)
-                          if frame.shape[1] != width or frame.shape[0] != height:
-                              frame = cv2.resize(frame, (width, height))
+                  try:
+                      while True:
+                          now = time.time()
+                          if now - start_time >= duration:
+                              break
 
-                          writer.write(frame)
-                          frames_written += 1
-                          next_frame_time += frame_interval
-                      else:
-                          time.sleep(min(0.005, next_frame_time - now))
-              finally:
-                  writer.release()
+                          if now >= next_frame_time:
+                              raw = np.array(sct.grab(monitor))
+                              frame = cv2.cvtColor(raw, cv2.COLOR_BGRA2BGR)
+                              if frame.shape[1] != width or frame.shape[0] != height:
+                                  frame = cv2.resize(frame, (width, height))
 
+                              writer.write(frame)
+                              frames_written += 1
+                              next_frame_time += frame_interval
+                          else:
+                              time.sleep(min(0.005, next_frame_time - now))
+                  finally:
+                      writer.release()
+
+              browser.close()
               print(f"[DONE] Selesai. Total frame tersimpan: {frames_written} -> {output_path}")
           EOF
 
