@@ -1,0 +1,203 @@
+name: Rekam Layar Stream (Full Screen)
+
+on:
+  workflow_dispatch:
+  # Aktifkan jadwal jika diperlukan (UTC):
+  # schedule:
+  #   - cron: "0 3 * * *"
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies, Xvfb & Playwright Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgbm1 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libpango-1.0-0 libcairo2 libasound2t64 || true
+          python -m pip install --upgrade pip
+          pip install mss numpy opencv-python playwright
+          python -m playwright install chromium
+
+      - name: Run screen recorder script
+        env:
+          TARGET_URL: "https://rojadirectago.org/embed/eventos.html?r=aHR0cHM6Ly90dmY5MC5jb20vMS5waHA/c3RyZWFtPWVzcG4y"
+          OUTPUT_FILE: "rekaman_layar.mp4"
+          DURATION_SECONDS: "30"
+          FPS: "15"
+          WAIT_BEFORE_RECORD: "8"
+          SCREEN_WIDTH: "1280"
+          SCREEN_HEIGHT: "720"
+        run: |
+          xvfb-run -a --server-args="-screen 0 1280x720x24" python -u - << 'EOF'
+          import os
+          import time
+          import cv2
+          import mss
+          import numpy as np
+          from playwright.sync_api import sync_playwright
+
+          url = os.getenv(
+              "TARGET_URL",
+              "https://rojadirectago.org/embed/eventos.html?r=aHR0cHM6Ly90dmY5MC5jb20vMS5waHA/c3RyZWFtPWVzcG4y",
+          )
+          output_path = os.getenv("OUTPUT_FILE", "rekaman_layar.mp4")
+          duration = int(os.getenv("DURATION_SECONDS", "100"))
+          fps = float(os.getenv("FPS", "15"))
+          wait_sec = int(os.getenv("WAIT_BEFORE_RECORD", "8"))
+          width = int(os.getenv("SCREEN_WIDTH", "1280"))
+          height = int(os.getenv("SCREEN_HEIGHT", "720"))
+          monitor_index = 1
+
+          width -= width % 2
+          height -= height % 2
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch(
+                  headless=False,
+                  args=[
+                      "--no-first-run",
+                      "--no-default-browser-check",
+                      "--disable-infobars",
+                      "--disable-dev-shm-usage",
+                      "--disable-blink-features=AutomationControlled",
+                      "--ignore-gpu-blocklist",
+                      "--use-gl=angle",
+                      "--use-angle=swiftshader",
+                      "--enable-unsafe-swiftshader",
+                      "--autoplay-policy=no-user-gesture-required",
+                      "--start-fullscreen",
+                      "--window-position=0,0",
+                      f"--window-size={width},{height}",
+                  ],
+              )
+              context = browser.new_context(
+                  viewport={"width": width, "height": height},
+                  ignore_https_errors=True,
+              )
+              context.add_init_script(
+                  "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
+              )
+              page = context.new_page()
+
+              print(f"[INFO] Membuka: {url}")
+              page.goto(url, wait_until="domcontentloaded", timeout=60000)
+
+              print(f"[INFO] Menunggu {wait_sec} detik agar halaman/player siap...")
+              time.sleep(wait_sec)
+
+              # Coba tutup dialog cookie/consent jika muncul
+              consent_selectors = [
+                  'button[aria-label*="Accept all"]',
+                  'button[aria-label*="Reject all"]',
+                  'button:has-text("Accept all")',
+                  'button:has-text("I agree")',
+                  'button:has-text("Setuju")',
+                  'button:has-text("Terima semua")',
+              ]
+              for selector in consent_selectors:
+                  try:
+                      btn = page.locator(selector).first
+                      if btn.is_visible(timeout=700):
+                          btn.click(timeout=1500)
+                          print(f"[INFO] Menekan tombol consent: {selector}")
+                          time.sleep(0.8)
+                          break
+                  except Exception:
+                      pass
+
+              # Coba picu play & fullscreen (baik di halaman utama maupun iframe jika ada)
+              try:
+                  play_selectors = [
+                      ".ytp-large-play-button",
+                      'button[aria-label*="Play"]',
+                      'button[class*="play"]',
+                      'div[class*="play"]',
+                  ]
+                  for sel in play_selectors:
+                      try:
+                          btn = page.locator(sel).first
+                          if btn.is_visible(timeout=500):
+                              btn.click(timeout=1200)
+                              print(f"[INFO] Klik elemen play: {sel}")
+                              time.sleep(0.6)
+                              break
+                      except Exception:
+                          pass
+
+                  # Cek juga di dalam iframe jika player berada di embed/iframe
+                  for frame in page.frames:
+                      if frame == page.main_frame:
+                          continue
+                      for sel in play_selectors:
+                          try:
+                              fbtn = frame.locator(sel).first
+                              if fbtn.is_visible(timeout=400):
+                                  fbtn.click(timeout=1200)
+                                  print(f"[INFO] Klik play di iframe: {sel}")
+                                  time.sleep(0.6)
+                                  break
+                          except Exception:
+                              pass
+
+                  page.mouse.click(width // 2, height // 2)
+                  time.sleep(0.4)
+                  page.keyboard.press("f")
+                  time.sleep(0.8)
+              except Exception as e:
+                  print(f"[WARN] Gagal memicu play/fullscreen: {e}")
+
+              with mss.mss() as sct:
+                  monitors = sct.monitors
+                  if monitor_index < 1 or monitor_index >= len(monitors):
+                      monitor_index = 1
+
+                  monitor = monitors[monitor_index]
+                  cap_width = monitor["width"] - (monitor["width"] % 2)
+                  cap_height = monitor["height"] - (monitor["height"] % 2)
+
+                  fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                  writer = cv2.VideoWriter(output_path, fourcc, fps, (cap_width, cap_height))
+
+                  print(f"[START] Merekam {cap_width}x{cap_height} selama {duration} detik ke '{output_path}'...")
+                  frame_interval = 1.0 / fps
+                  start_time = time.time()
+                  next_frame_time = start_time
+                  frames_written = 0
+
+                  try:
+                      while True:
+                          now = time.time()
+                          if now - start_time >= duration:
+                              break
+
+                          if now >= next_frame_time:
+                              raw = np.array(sct.grab(monitor))
+                              frame = cv2.cvtColor(raw, cv2.COLOR_BGRA2BGR)
+                              if frame.shape[1] != cap_width or frame.shape[0] != cap_height:
+                                  frame = cv2.resize(frame, (cap_width, cap_height))
+
+                              writer.write(frame)
+                              frames_written += 1
+                              next_frame_time += frame_interval
+                          else:
+                              time.sleep(min(0.005, next_frame_time - now))
+                  finally:
+                      writer.release()
+
+              browser.close()
+              print(f"[DONE] Selesai. Total frame tersimpan: {frames_written} -> {output_path}")
+          EOF
+
+      - name: Upload recorded video
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hasil-rekaman-stream
+          path: rekaman_layar.mp4
+          if-no-files-found: ignore
