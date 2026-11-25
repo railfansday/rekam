@@ -27,7 +27,7 @@ jobs:
         env:
           YOUTUBE_URL: "https://rojadirectago.org/embed/eventos.html?r=aHR0cHM6Ly90di05MC5jb20vZHJtL3RudHNwb3J0czQucGhw"
           OUTPUT_FILE: "rekaman_layar.mp4"
-          DURATION_SECONDS: "7230"
+          DURATION_SECONDS: "3300"
           FPS: "15"
           WAIT_BEFORE_RECORD: "6"
         run: |
