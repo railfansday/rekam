@@ -27,8 +27,8 @@ jobs:
         env:
           YOUTUBE_URL: "https://rojadirectago.org/embed/eventos.html?r=aHR0cHM6Ly90di05MC5jb20vZHJtL3RudHNwb3J0czQucGhw"
           OUTPUT_FILE: "rekaman_layar.mp4"
-          DURATION_SECONDS: "1300"
-          FPS: "60"
+          DURATION_SECONDS: "7230"
+          FPS: "15"
           WAIT_BEFORE_RECORD: "6"
         run: |
           xvfb-run -a --server-args="-screen 0 1280x720x24" python -u - << 'EOF'
