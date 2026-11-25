@@ -25,7 +25,7 @@ jobs:
 
       - name: Run screen recorder script
         env:
-          YOUTUBE_URL: "xhamster.com/videos/kneel-on-the-ground-for-apologize-comapny-m-2-xh4zLuF"
+          YOUTUBE_URL: "https://id.spankbang.com/82lfj/video/naniwa+ol"
           OUTPUT_FILE: "rekaman_layar.mp4"
           DURATION_SECONDS: "300"
           FPS: "15"
