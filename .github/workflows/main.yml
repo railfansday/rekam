@@ -25,7 +25,7 @@ jobs:
 
       - name: Run screen recorder script
         env:
-          YOUTUBE_URL: "https://id.spankbang.com/82lfj/video/naniwa+ol"
+          YOUTUBE_URL: "https://www.rctiplus.com/tv/rcti"
           OUTPUT_FILE: "rekaman_layar.mp4"
           DURATION_SECONDS: "300"
           FPS: "15"
