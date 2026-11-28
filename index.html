@@ -38,7 +38,7 @@
     button:hover { background: #1d4ed8; }
     button:disabled { background: #334155; cursor: not-allowed; }
     .playlist {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
       gap: 10px; margin-top: 16px;
     }
     .clip-btn {
@@ -78,52 +78,100 @@
   </div>
 
   <script>
-    const clips = [{"index": 1, "name": "clip-000.mp4", "src": "videos/clip-000.mp4", "size": "21.3 MB"}, {"index": 2, "name": "clip-001.mp4", "src": "videos/clip-001.mp4", "size": "19.0 MB"}, {"index": 3, "name": "clip-002.mp4", "src": "videos/clip-002.mp4", "size": "19.2 MB"}, {"index": 4, "name": "clip-003.mp4", "src": "videos/clip-003.mp4", "size": "21.6 MB"}, {"index": 5, "name": "clip-004.mp4", "src": "videos/clip-004.mp4", "size": "19.1 MB"}, {"index": 6, "name": "clip-005.mp4", "src": "videos/clip-005.mp4", "size": "18.9 MB"}, {"index": 7, "name": "clip-006.mp4", "src": "videos/clip-006.mp4", "size": "19.3 MB"}, {"index": 8, "name": "clip-007.mp4", "src": "videos/clip-007.mp4", "size": "20.3 MB"}, {"index": 9, "name": "clip-008.mp4", "src": "videos/clip-008.mp4", "size": "18.8 MB"}, {"index": 10, "name": "clip-009.mp4", "src": "videos/clip-009.mp4", "size": "21.3 MB"}, {"index": 11, "name": "clip-010.mp4", "src": "videos/clip-010.mp4", "size": "19.9 MB"}, {"index": 12, "name": "clip-011.mp4", "src": "videos/clip-011.mp4", "size": "17.9 MB"}, {"index": 13, "name": "clip-012.mp4", "src": "videos/clip-012.mp4", "size": "14.9 MB"}, {"index": 14, "name": "clip-013.mp4", "src": "videos/clip-013.mp4", "size": "13.3 MB"}, {"index": 15, "name": "clip-014.mp4", "src": "videos/clip-014.mp4", "size": "16.6 MB"}, {"index": 16, "name": "clip-015.mp4", "src": "videos/clip-015.mp4", "size": "13.0 MB"}, {"index": 17, "name": "clip-016.mp4", "src": "videos/clip-016.mp4", "size": "14.1 MB"}, {"index": 18, "name": "clip-017.mp4", "src": "videos/clip-017.mp4", "size": "18.9 MB"}, {"index": 19, "name": "clip-018.mp4", "src": "videos/clip-018.mp4", "size": "18.8 MB"}, {"index": 20, "name": "clip-019.mp4", "src": "videos/clip-019.mp4", "size": "18.7 MB"}, {"index": 21, "name": "clip-020.mp4", "src": "videos/clip-020.mp4", "size": "21.4 MB"}, {"index": 22, "name": "clip-021.mp4", "src": "videos/clip-021.mp4", "size": "18.1 MB"}, {"index": 23, "name": "clip-022.mp4", "src": "videos/clip-022.mp4", "size": "19.9 MB"}, {"index": 24, "name": "clip-023.mp4", "src": "videos/clip-023.mp4", "size": "17.7 MB"}, {"index": 25, "name": "clip-024.mp4", "src": "videos/clip-024.mp4", "size": "20.3 MB"}, {"index": 26, "name": "clip-025.mp4", "src": "videos/clip-025.mp4", "size": "20.2 MB"}, {"index": 27, "name": "clip-026.mp4", "src": "videos/clip-026.mp4", "size": "18.4 MB"}, {"index": 28, "name": "clip-027.mp4", "src": "videos/clip-027.mp4", "size": "20.0 MB"}, {"index": 29, "name": "clip-028.mp4", "src": "videos/clip-028.mp4", "size": "19.3 MB"}, {"index": 30, "name": "clip-029.mp4", "src": "videos/clip-029.mp4", "size": "18.0 MB"}, {"index": 31, "name": "clip-030.mp4", "src": "videos/clip-030.mp4", "size": "19.3 MB"}, {"index": 32, "name": "clip-031.mp4", "src": "videos/clip-031.mp4", "size": "19.5 MB"}, {"index": 33, "name": "clip-032.mp4", "src": "videos/clip-032.mp4", "size": "19.9 MB"}, {"index": 34, "name": "clip-033.mp4", "src": "videos/clip-033.mp4", "size": "14.3 MB"}, {"index": 35, "name": "clip-034.mp4", "src": "videos/clip-034.mp4", "size": "14.0 MB"}, {"index": 36, "name": "clip-035.mp4", "src": "videos/clip-035.mp4", "size": "13.9 MB"}, {"index": 37, "name": "clip-036.mp4", "src": "videos/clip-036.mp4", "size": "15.6 MB"}, {"index": 38, "name": "clip-037.mp4", "src": "videos/clip-037.mp4", "size": "14.4 MB"}, {"index": 39, "name": "clip-038.mp4", "src": "videos/clip-038.mp4", "size": "15.0 MB"}, {"index": 40, "name": "clip-039.mp4", "src": "videos/clip-039.mp4", "size": "13.3 MB"}];
-    const player = document.getElementById("mainPlayer");
-    const playlistEl = document.getElementById("playlist");
-    const statusText = document.getElementById("statusText");
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
-    const autoNext = document.getElementById("autoNext");
-    let currentIdx = 0;
+    (async function () {
+      const player = document.getElementById("mainPlayer");
+      const playlistEl = document.getElementById("playlist");
+      const statusText = document.getElementById("statusText");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const autoNext = document.getElementById("autoNext");
 
-    function loadClip(idx, shouldPlay = true) {
+      let clips = [];
+
+      // 1. Ambil daftar file dari folder videos/ otomatis lewat GitHub API
+      try {
+        const res = await fetch("https://api.github.com/repos/railfansday/rekam/contents/videos");
+        if (res.ok) {
+          const items = await res.json();
+          clips = items
+            .filter(item => item.type === "file" && item.name.toLowerCase().endsWith(".mp4"))
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+            .map((item, idx) => ({
+              index: idx + 1,
+              name: item.name,
+              src: "videos/" + item.name,
+              size: (item.size / (1024 * 1024)).toFixed(1) + " MB"
+            }));
+        }
+      } catch (e) {}
+
+      // 2. Fallback jika API limit/gagal: deteksi berurutan clip-000.mp4, clip-001.mp4, dst.
       if (!clips.length) {
-        statusText.textContent = "Belum ada video di folder videos/";
-        return;
+        for (let i = 0; i < 60; i++) {
+          const fname = "clip-" + String(i).padStart(3, "0") + ".mp4";
+          const url = "videos/" + fname;
+          try {
+            const check = await fetch(url, { method: "HEAD" });
+            if (check.ok) {
+              const bytes = Number(check.headers.get("content-length") || 0);
+              clips.push({
+                index: clips.length + 1,
+                name: fname,
+                src: url,
+                size: bytes ? (bytes / (1024 * 1024)).toFixed(1) + " MB" : "MP4"
+              });
+            } else if (i > 0) {
+              break;
+            }
+          } catch (e) {
+            break;
+          }
+        }
       }
-      currentIdx = Math.max(0, Math.min(idx, clips.length - 1));
-      const item = clips[currentIdx];
-      player.src = item.src;
-      statusText.textContent = "Memutar Part " + item.index + " / " + clips.length + " - " + item.name + " (" + item.size + ")";
-      prevBtn.disabled = currentIdx === 0;
-      nextBtn.disabled = currentIdx === clips.length - 1;
 
-      document.querySelectorAll(".clip-btn").forEach(function(el, i) {
-        el.classList.toggle("active", i === currentIdx);
+      let currentIdx = 0;
+
+      function loadClip(idx, shouldPlay = true) {
+        if (!clips.length) {
+          statusText.textContent = "Tidak ada klip video ditemukan di folder videos/";
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          return;
+        }
+        currentIdx = Math.max(0, Math.min(idx, clips.length - 1));
+        const item = clips[currentIdx];
+        player.src = item.src;
+        statusText.textContent = `Memutar Part ${item.index} / ${clips.length} — ${item.name} (${item.size})`;
+        prevBtn.disabled = currentIdx === 0;
+        nextBtn.disabled = currentIdx === clips.length - 1;
+
+        document.querySelectorAll(".clip-btn").forEach((el, i) => {
+          el.classList.toggle("active", i === currentIdx);
+        });
+        if (shouldPlay) {
+          player.play().catch(() => {});
+        }
+      }
+
+      playlistEl.innerHTML = "";
+      clips.forEach((item, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "clip-btn";
+        btn.innerHTML = `<span class="clip-title">Part ${String(item.index).padStart(2, "0")}</span><span class="clip-sub">${item.name} • ${item.size}</span>`;
+        btn.onclick = () => loadClip(idx, true);
+        playlistEl.appendChild(btn);
       });
-      if (shouldPlay) {
-        player.play().catch(function() {});
-      }
-    }
 
-    clips.forEach(function(item, idx) {
-      const btn = document.createElement("button");
-      btn.className = "clip-btn";
-      btn.innerHTML = "<span class="clip-title">Part " + String(item.index).padStart(2, "0") + "</span><span class="clip-sub">" + item.name + " • " + item.size + "</span>";
-      btn.onclick = function() { loadClip(idx, true); };
-      playlistEl.appendChild(btn);
-    });
+      prevBtn.onclick = () => loadClip(currentIdx - 1, true);
+      nextBtn.onclick = () => loadClip(currentIdx + 1, true);
+      player.addEventListener("ended", () => {
+        if (autoNext.checked && currentIdx < clips.length - 1) {
+          loadClip(currentIdx + 1, true);
+        }
+      });
 
-    prevBtn.onclick = function() { loadClip(currentIdx - 1, true); };
-    nextBtn.onclick = function() { loadClip(currentIdx + 1, true); };
-    player.addEventListener("ended", function() {
-      if (autoNext.checked && currentIdx < clips.length - 1) {
-        loadClip(currentIdx + 1, true);
-      }
-    });
-
-    loadClip(0, false);
+      loadClip(0, false);
+    })();
   </script>
 </body>
 </html>
