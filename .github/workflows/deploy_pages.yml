@@ -1,0 +1,222 @@
+name: Build & Deploy Video Portal to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'videos/**'
+      - '.github/workflows/deploy_pages.yml'
+  workflow_dispatch:
+    inputs:
+      page_title:
+        description: 'Judul halaman web pemutar rekaman'
+        required: false
+        default: 'LFC vs Club Brugge - Match Recording'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-deploy-lock
+  cancel-in-progress: true
+
+jobs:
+  build-index-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Generate Standalone HTML Video Player (index.html)
+        env:
+          PAGE_TITLE: ${{ inputs.page_title || 'LFC vs Club Brugge - Match Recording' }}
+        run: |
+          python3 - << 'EOF'
+          import os
+          import glob
+          import json
+          import html
+
+          title = os.environ.get("PAGE_TITLE", "LFC vs Club Brugge - Match Recording")
+          files = sorted(glob.glob("videos/*.mp4"))
+          clips = []
+          for idx, f in enumerate(files):
+              rel_path = f.replace("\\", "/")
+              name = os.path.basename(f)
+              size_mb = round(os.path.getsize(f) / (1024 * 1024), 1)
+              clips.append({
+                  "index": idx + 1,
+                  "name": name,
+                  "src": rel_path,
+                  "size": f"{size_mb} MB",
+                  "label": f"Part {idx + 1:02d} ({name})"
+              })
+
+          clips_json = json.dumps(clips)
+          safe_title = html.escape(title)
+
+          html_content = f'''<!DOCTYPE html>
+          <html lang="id">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>{safe_title}</title>
+            <style>
+              * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+              body {{
+                font-family: system-ui, -apple-system, sans-serif;
+                background: #0b0f19;
+                color: #f1f5f9;
+                padding: 20px;
+              }}
+              .container {{ max-width: 1100px; margin: 0 auto; }}
+              header {{
+                display: flex; flex-wrap: wrap; justify-content: space-between;
+                align-items: center; gap: 12px; margin-bottom: 18px;
+                padding-bottom: 14px; border-bottom: 1px solid #1e293b;
+              }}
+              h1 {{ font-size: 1.35rem; font-weight: 700; color: #38bdf8; }}
+              .meta {{ font-size: 0.9rem; color: #94a3b8; }}
+              .player-wrap {{
+                background: #020617; border: 1px solid #1e293b;
+                border-radius: 12px; overflow: hidden; margin-bottom: 16px;
+              }}
+              video {{ width: 100%; max-height: 70vh; display: block; background: #000; }}
+              .controls {{
+                display: flex; flex-wrap: wrap; justify-content: space-between;
+                align-items: center; gap: 10px; padding: 12px 16px;
+                background: #0f172a; border-top: 1px solid #1e293b;
+              }}
+              button {{
+                background: #2563eb; color: #fff; border: none;
+                padding: 8px 14px; border-radius: 8px; cursor: pointer;
+                font-weight: 600; font-size: 0.9rem;
+              }}
+              button:hover {{ background: #1d4ed8; }}
+              button:disabled {{ background: #334155; cursor: not-allowed; }}
+              .playlist {{
+                display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 10px; margin-top: 16px;
+              }}
+              .clip-btn {{
+                background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+                padding: 10px 12px; border-radius: 8px; text-align: left;
+                cursor: pointer; transition: 0.15s;
+              }}
+              .clip-btn:hover {{ border-color: #38bdf8; }}
+              .clip-btn.active {{
+                background: #0284c7; border-color: #38bdf8; color: #fff;
+              }}
+              .clip-title {{ font-weight: 600; font-size: 0.9rem; display: block; }}
+              .clip-sub {{ font-size: 0.78rem; opacity: 0.8; }}
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <header>
+                <h1>{safe_title}</h1>
+                <div class="meta" id="statusText">Memuat daftar klip...</div>
+              </header>
+
+              <div class="player-wrap">
+                <video id="mainPlayer" controls autoplay playsinline preload="metadata"></video>
+                <div class="controls">
+                  <div>
+                    <button id="prevBtn">Sebelumnya</button>
+                    <button id="nextBtn">Selanjutnya</button>
+                  </div>
+                  <label style="font-size:0.9rem;color:#cbd5e1;cursor:pointer;">
+                    <input type="checkbox" id="autoNext" checked /> Putar otomatis berurutan
+                  </label>
+                </div>
+              </div>
+
+              <div class="playlist" id="playlist"></div>
+            </div>
+
+            <script>
+              const clips = {clips_json};
+              const player = document.getElementById("mainPlayer");
+              const playlistEl = document.getElementById("playlist");
+              const statusText = document.getElementById("statusText");
+              const prevBtn = document.getElementById("prevBtn");
+              const nextBtn = document.getElementById("nextBtn");
+              const autoNext = document.getElementById("autoNext");
+              let currentIdx = 0;
+
+              function loadClip(idx, shouldPlay = true) {{
+                if (!clips.length) {{
+                  statusText.textContent = "Belum ada video di folder videos/";
+                  return;
+                }}
+                currentIdx = Math.max(0, Math.min(idx, clips.length - 1));
+                const item = clips[currentIdx];
+                player.src = item.src;
+                statusText.textContent = `Memutar Part ${{item.index}} / ${{clips.length}} — ${{item.name}} (${{item.size}})`;
+                prevBtn.disabled = currentIdx === 0;
+                nextBtn.disabled = currentIdx === clips.length - 1;
+
+                document.querySelectorAll(".clip-btn").forEach((el, i) => {{
+                  el.classList.toggle("active", i === currentIdx);
+                }});
+                if (shouldPlay) {{
+                  player.play().catch(() => {{}});
+                }}
+              }}
+
+              clips.forEach((item, idx) => {{
+                const btn = document.createElement("button");
+                btn.className = "clip-btn";
+                btn.innerHTML = `<span class="clip-title">Part ${{String(item.index).padStart(2, "0")}}</span><span class="clip-sub">${{item.name}} • ${{item.size}}</span>`;
+                btn.onclick = () => loadClip(idx, true);
+                playlistEl.appendChild(btn);
+              }});
+
+              prevBtn.onclick = () => loadClip(currentIdx - 1, true);
+              nextBtn.onclick = () => loadClip(currentIdx + 1, true);
+              player.addEventListener("ended", () => {{
+                if (autoNext.checked && currentIdx < clips.length - 1) {{
+                  loadClip(currentIdx + 1, true);
+                }}
+              }});
+
+              loadClip(0, false);
+            </script>
+          </body>
+          </html>
+          '''
+
+          with open("index.html", "w", encoding="utf-8") as f:
+              f.write(html_content)
+          print(f"Generated index.html dengan {len(clips)} klip video.")
+          EOF
+
+      - name: Commit index.html to Main
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add index.html
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update index.html video playlist"
+            git pull --rebase -X ours --autostash origin main || true
+            git push origin main
+          fi
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Site Artifact for Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
