@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LFC vs Club Brugge - Match Recording</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0b0f19;
+      color: #f1f5f9;
+      padding: 20px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header {
+      display: flex; flex-wrap: wrap; justify-content: space-between;
+      align-items: center; gap: 12px; margin-bottom: 18px;
+      padding-bottom: 14px; border-bottom: 1px solid #1e293b;
+    }
+    h1 { font-size: 1.35rem; font-weight: 700; color: #38bdf8; }
+    .meta { font-size: 0.9rem; color: #94a3b8; }
+    .player-wrap {
+      background: #020617; border: 1px solid #1e293b;
+      border-radius: 12px; overflow: hidden; margin-bottom: 16px;
+    }
+    video { width: 100%; max-height: 70vh; display: block; background: #000; }
+    .controls {
+      display: flex; flex-wrap: wrap; justify-content: space-between;
+      align-items: center; gap: 10px; padding: 12px 16px;
+      background: #0f172a; border-top: 1px solid #1e293b;
+    }
+    button {
+      background: #2563eb; color: #fff; border: none;
+      padding: 8px 14px; border-radius: 8px; cursor: pointer;
+      font-weight: 600; font-size: 0.9rem;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #334155; cursor: not-allowed; }
+    .playlist {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px; margin-top: 16px;
+    }
+    .clip-btn {
+      background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+      padding: 10px 12px; border-radius: 8px; text-align: left;
+      cursor: pointer; transition: 0.15s;
+    }
+    .clip-btn:hover { border-color: #38bdf8; }
+    .clip-btn.active {
+      background: #0284c7; border-color: #38bdf8; color: #fff;
+    }
+    .clip-title { font-weight: 600; font-size: 0.9rem; display: block; }
+    .clip-sub { font-size: 0.78rem; opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>LFC vs Club Brugge - Match Recording</h1>
+      <div class="meta" id="statusText">Memuat daftar klip...</div>
+    </header>
+
+    <div class="player-wrap">
+      <video id="mainPlayer" controls autoplay playsinline preload="metadata"></video>
+      <div class="controls">
+        <div>
+          <button id="prevBtn">Sebelumnya</button>
+          <button id="nextBtn">Selanjutnya</button>
+        </div>
+        <label style="font-size:0.9rem;color:#cbd5e1;cursor:pointer;">
+          <input type="checkbox" id="autoNext" checked /> Putar otomatis berurutan
+        </label>
+      </div>
+    </div>
+
+    <div class="playlist" id="playlist"></div>
+  </div>
+
+  <script>
+    const clips = [{"index": 1, "name": "clip-000.mp4", "src": "videos/clip-000.mp4", "size": "21.3 MB"}, {"index": 2, "name": "clip-001.mp4", "src": "videos/clip-001.mp4", "size": "19.0 MB"}, {"index": 3, "name": "clip-002.mp4", "src": "videos/clip-002.mp4", "size": "19.2 MB"}, {"index": 4, "name": "clip-003.mp4", "src": "videos/clip-003.mp4", "size": "21.6 MB"}, {"index": 5, "name": "clip-004.mp4", "src": "videos/clip-004.mp4", "size": "19.1 MB"}, {"index": 6, "name": "clip-005.mp4", "src": "videos/clip-005.mp4", "size": "18.9 MB"}, {"index": 7, "name": "clip-006.mp4", "src": "videos/clip-006.mp4", "size": "19.3 MB"}, {"index": 8, "name": "clip-007.mp4", "src": "videos/clip-007.mp4", "size": "20.3 MB"}, {"index": 9, "name": "clip-008.mp4", "src": "videos/clip-008.mp4", "size": "18.8 MB"}, {"index": 10, "name": "clip-009.mp4", "src": "videos/clip-009.mp4", "size": "21.3 MB"}, {"index": 11, "name": "clip-010.mp4", "src": "videos/clip-010.mp4", "size": "19.9 MB"}, {"index": 12, "name": "clip-011.mp4", "src": "videos/clip-011.mp4", "size": "17.9 MB"}, {"index": 13, "name": "clip-012.mp4", "src": "videos/clip-012.mp4", "size": "14.9 MB"}, {"index": 14, "name": "clip-013.mp4", "src": "videos/clip-013.mp4", "size": "13.3 MB"}, {"index": 15, "name": "clip-014.mp4", "src": "videos/clip-014.mp4", "size": "16.6 MB"}, {"index": 16, "name": "clip-015.mp4", "src": "videos/clip-015.mp4", "size": "13.0 MB"}, {"index": 17, "name": "clip-016.mp4", "src": "videos/clip-016.mp4", "size": "14.1 MB"}, {"index": 18, "name": "clip-017.mp4", "src": "videos/clip-017.mp4", "size": "18.9 MB"}, {"index": 19, "name": "clip-018.mp4", "src": "videos/clip-018.mp4", "size": "18.8 MB"}, {"index": 20, "name": "clip-019.mp4", "src": "videos/clip-019.mp4", "size": "18.7 MB"}, {"index": 21, "name": "clip-020.mp4", "src": "videos/clip-020.mp4", "size": "21.4 MB"}, {"index": 22, "name": "clip-021.mp4", "src": "videos/clip-021.mp4", "size": "18.1 MB"}, {"index": 23, "name": "clip-022.mp4", "src": "videos/clip-022.mp4", "size": "19.9 MB"}, {"index": 24, "name": "clip-023.mp4", "src": "videos/clip-023.mp4", "size": "17.7 MB"}, {"index": 25, "name": "clip-024.mp4", "src": "videos/clip-024.mp4", "size": "20.3 MB"}, {"index": 26, "name": "clip-025.mp4", "src": "videos/clip-025.mp4", "size": "20.2 MB"}, {"index": 27, "name": "clip-026.mp4", "src": "videos/clip-026.mp4", "size": "18.4 MB"}, {"index": 28, "name": "clip-027.mp4", "src": "videos/clip-027.mp4", "size": "20.0 MB"}, {"index": 29, "name": "clip-028.mp4", "src": "videos/clip-028.mp4", "size": "19.3 MB"}, {"index": 30, "name": "clip-029.mp4", "src": "videos/clip-029.mp4", "size": "18.0 MB"}, {"index": 31, "name": "clip-030.mp4", "src": "videos/clip-030.mp4", "size": "19.3 MB"}, {"index": 32, "name": "clip-031.mp4", "src": "videos/clip-031.mp4", "size": "19.5 MB"}, {"index": 33, "name": "clip-032.mp4", "src": "videos/clip-032.mp4", "size": "19.9 MB"}, {"index": 34, "name": "clip-033.mp4", "src": "videos/clip-033.mp4", "size": "14.3 MB"}, {"index": 35, "name": "clip-034.mp4", "src": "videos/clip-034.mp4", "size": "14.0 MB"}, {"index": 36, "name": "clip-035.mp4", "src": "videos/clip-035.mp4", "size": "13.9 MB"}, {"index": 37, "name": "clip-036.mp4", "src": "videos/clip-036.mp4", "size": "15.6 MB"}, {"index": 38, "name": "clip-037.mp4", "src": "videos/clip-037.mp4", "size": "14.4 MB"}, {"index": 39, "name": "clip-038.mp4", "src": "videos/clip-038.mp4", "size": "15.0 MB"}, {"index": 40, "name": "clip-039.mp4", "src": "videos/clip-039.mp4", "size": "13.3 MB"}];
+    const player = document.getElementById("mainPlayer");
+    const playlistEl = document.getElementById("playlist");
+    const statusText = document.getElementById("statusText");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const autoNext = document.getElementById("autoNext");
+    let currentIdx = 0;
+
+    function loadClip(idx, shouldPlay = true) {
+      if (!clips.length) {
+        statusText.textContent = "Belum ada video di folder videos/";
+        return;
+      }
+      currentIdx = Math.max(0, Math.min(idx, clips.length - 1));
+      const item = clips[currentIdx];
+      player.src = item.src;
+      statusText.textContent = "Memutar Part " + item.index + " / " + clips.length + " - " + item.name + " (" + item.size + ")";
+      prevBtn.disabled = currentIdx === 0;
+      nextBtn.disabled = currentIdx === clips.length - 1;
+
+      document.querySelectorAll(".clip-btn").forEach(function(el, i) {
+        el.classList.toggle("active", i === currentIdx);
+      });
+      if (shouldPlay) {
+        player.play().catch(function() {});
+      }
+    }
+
+    clips.forEach(function(item, idx) {
+      const btn = document.createElement("button");
+      btn.className = "clip-btn";
+      btn.innerHTML = "<span class="clip-title">Part " + String(item.index).padStart(2, "0") + "</span><span class="clip-sub">" + item.name + " • " + item.size + "</span>";
+      btn.onclick = function() { loadClip(idx, true); };
+      playlistEl.appendChild(btn);
+    });
+
+    prevBtn.onclick = function() { loadClip(currentIdx - 1, true); };
+    nextBtn.onclick = function() { loadClip(currentIdx + 1, true); };
+    player.addEventListener("ended", function() {
+      if (autoNext.checked && currentIdx < clips.length - 1) {
+        loadClip(currentIdx + 1, true);
+      }
+    });
+
+    loadClip(0, false);
+  </script>
+</body>
+</html>
