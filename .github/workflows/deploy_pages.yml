@@ -38,7 +38,7 @@ jobs:
         env:
           PAGE_TITLE: ${{ inputs.page_title || 'LFC vs Club Brugge - Match Recording' }}
         run: |
-          python3 - << 'EOF'
+          cat << 'EOF' > generate_index.py
           import os
           import glob
           import json
@@ -48,7 +48,7 @@ jobs:
           files = sorted(glob.glob("videos/*.mp4"))
           clips = []
           for idx, f in enumerate(files):
-              rel_path = f.replace("\\", "/")
+              rel_path = f.replace("\", "/")
               name = os.path.basename(f)
               size_mb = round(os.path.getsize(f) / (1024 * 1024), 1)
               clips.append({
@@ -197,6 +197,8 @@ jobs:
               f.write(html_content)
           print(f"Generated index.html dengan {len(clips)} klip video.")
           EOF
+          python3 generate_index.py
+          rm -f generate_index.py
 
       - name: Commit index.html to Main
         run: |
@@ -211,6 +213,8 @@ jobs:
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload Site Artifact for Pages
         uses: actions/upload-pages-artifact@v3
