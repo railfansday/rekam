@@ -38,90 +38,86 @@ jobs:
         env:
           PAGE_TITLE: ${{ inputs.page_title || 'LFC vs Club Brugge - Match Recording' }}
         run: |
-          cat << 'EOF' > generate_index.py
-          import os
-          import glob
-          import json
-          import html
+          python3 -c '
+          import os, glob, json, html
 
           title = os.environ.get("PAGE_TITLE", "LFC vs Club Brugge - Match Recording")
           files = sorted(glob.glob("videos/*.mp4"))
           clips = []
           for idx, f in enumerate(files):
-              rel_path = f.replace("\", "/")
+              rel_path = f.replace("\\", "/")
               name = os.path.basename(f)
               size_mb = round(os.path.getsize(f) / (1024 * 1024), 1)
               clips.append({
                   "index": idx + 1,
                   "name": name,
                   "src": rel_path,
-                  "size": f"{size_mb} MB",
-                  "label": f"Part {idx + 1:02d} ({name})"
+                  "size": str(size_mb) + " MB"
               })
 
           clips_json = json.dumps(clips)
           safe_title = html.escape(title)
 
-          html_content = f'''<!DOCTYPE html>
+          template = """<!DOCTYPE html>
           <html lang="id">
           <head>
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>{safe_title}</title>
+            <title>__TITLE__</title>
             <style>
-              * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-              body {{
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body {
                 font-family: system-ui, -apple-system, sans-serif;
                 background: #0b0f19;
                 color: #f1f5f9;
                 padding: 20px;
-              }}
-              .container {{ max-width: 1100px; margin: 0 auto; }}
-              header {{
+              }
+              .container { max-width: 1100px; margin: 0 auto; }
+              header {
                 display: flex; flex-wrap: wrap; justify-content: space-between;
                 align-items: center; gap: 12px; margin-bottom: 18px;
                 padding-bottom: 14px; border-bottom: 1px solid #1e293b;
-              }}
-              h1 {{ font-size: 1.35rem; font-weight: 700; color: #38bdf8; }}
-              .meta {{ font-size: 0.9rem; color: #94a3b8; }}
-              .player-wrap {{
+              }
+              h1 { font-size: 1.35rem; font-weight: 700; color: #38bdf8; }
+              .meta { font-size: 0.9rem; color: #94a3b8; }
+              .player-wrap {
                 background: #020617; border: 1px solid #1e293b;
                 border-radius: 12px; overflow: hidden; margin-bottom: 16px;
-              }}
-              video {{ width: 100%; max-height: 70vh; display: block; background: #000; }}
-              .controls {{
+              }
+              video { width: 100%; max-height: 70vh; display: block; background: #000; }
+              .controls {
                 display: flex; flex-wrap: wrap; justify-content: space-between;
                 align-items: center; gap: 10px; padding: 12px 16px;
                 background: #0f172a; border-top: 1px solid #1e293b;
-              }}
-              button {{
+              }
+              button {
                 background: #2563eb; color: #fff; border: none;
                 padding: 8px 14px; border-radius: 8px; cursor: pointer;
                 font-weight: 600; font-size: 0.9rem;
-              }}
-              button:hover {{ background: #1d4ed8; }}
-              button:disabled {{ background: #334155; cursor: not-allowed; }}
-              .playlist {{
+              }
+              button:hover { background: #1d4ed8; }
+              button:disabled { background: #334155; cursor: not-allowed; }
+              .playlist {
                 display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
                 gap: 10px; margin-top: 16px;
-              }}
-              .clip-btn {{
+              }
+              .clip-btn {
                 background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
                 padding: 10px 12px; border-radius: 8px; text-align: left;
                 cursor: pointer; transition: 0.15s;
-              }}
-              .clip-btn:hover {{ border-color: #38bdf8; }}
-              .clip-btn.active {{
+              }
+              .clip-btn:hover { border-color: #38bdf8; }
+              .clip-btn.active {
                 background: #0284c7; border-color: #38bdf8; color: #fff;
-              }}
-              .clip-title {{ font-weight: 600; font-size: 0.9rem; display: block; }}
-              .clip-sub {{ font-size: 0.78rem; opacity: 0.8; }}
+              }
+              .clip-title { font-weight: 600; font-size: 0.9rem; display: block; }
+              .clip-sub { font-size: 0.78rem; opacity: 0.8; }
             </style>
           </head>
           <body>
             <div class="container">
               <header>
-                <h1>{safe_title}</h1>
+                <h1>__TITLE__</h1>
                 <div class="meta" id="statusText">Memuat daftar klip...</div>
               </header>
 
@@ -142,7 +138,7 @@ jobs:
             </div>
 
             <script>
-              const clips = {clips_json};
+              const clips = __CLIPS_JSON__;
               const player = document.getElementById("mainPlayer");
               const playlistEl = document.getElementById("playlist");
               const statusText = document.getElementById("statusText");
@@ -151,54 +147,52 @@ jobs:
               const autoNext = document.getElementById("autoNext");
               let currentIdx = 0;
 
-              function loadClip(idx, shouldPlay = true) {{
-                if (!clips.length) {{
+              function loadClip(idx, shouldPlay = true) {
+                if (!clips.length) {
                   statusText.textContent = "Belum ada video di folder videos/";
                   return;
-                }}
+                }
                 currentIdx = Math.max(0, Math.min(idx, clips.length - 1));
                 const item = clips[currentIdx];
                 player.src = item.src;
-                statusText.textContent = `Memutar Part ${{item.index}} / ${{clips.length}} — ${{item.name}} (${{item.size}})`;
+                statusText.textContent = "Memutar Part " + item.index + " / " + clips.length + " - " + item.name + " (" + item.size + ")";
                 prevBtn.disabled = currentIdx === 0;
                 nextBtn.disabled = currentIdx === clips.length - 1;
 
-                document.querySelectorAll(".clip-btn").forEach((el, i) => {{
+                document.querySelectorAll(".clip-btn").forEach(function(el, i) {
                   el.classList.toggle("active", i === currentIdx);
-                }});
-                if (shouldPlay) {{
-                  player.play().catch(() => {{}});
-                }}
-              }}
+                });
+                if (shouldPlay) {
+                  player.play().catch(function() {});
+                }
+              }
 
-              clips.forEach((item, idx) => {{
+              clips.forEach(function(item, idx) {
                 const btn = document.createElement("button");
                 btn.className = "clip-btn";
-                btn.innerHTML = `<span class="clip-title">Part ${{String(item.index).padStart(2, "0")}}</span><span class="clip-sub">${{item.name}} • ${{item.size}}</span>`;
-                btn.onclick = () => loadClip(idx, true);
+                btn.innerHTML = "<span class=\"clip-title\">Part " + String(item.index).padStart(2, "0") + "</span><span class=\"clip-sub\">" + item.name + " • " + item.size + "</span>";
+                btn.onclick = function() { loadClip(idx, true); };
                 playlistEl.appendChild(btn);
-              }});
+              });
 
-              prevBtn.onclick = () => loadClip(currentIdx - 1, true);
-              nextBtn.onclick = () => loadClip(currentIdx + 1, true);
-              player.addEventListener("ended", () => {{
-                if (autoNext.checked && currentIdx < clips.length - 1) {{
+              prevBtn.onclick = function() { loadClip(currentIdx - 1, true); };
+              nextBtn.onclick = function() { loadClip(currentIdx + 1, true); };
+              player.addEventListener("ended", function() {
+                if (autoNext.checked && currentIdx < clips.length - 1) {
                   loadClip(currentIdx + 1, true);
-                }}
-              }});
+                }
+              });
 
               loadClip(0, false);
             </script>
           </body>
-          </html>
-          '''
+          </html>"""
 
+          html_out = template.replace("__TITLE__", safe_title).replace("__CLIPS_JSON__", clips_json)
           with open("index.html", "w", encoding="utf-8") as f:
-              f.write(html_content)
-          print(f"Generated index.html dengan {len(clips)} klip video.")
-          EOF
-          python3 generate_index.py
-          rm -f generate_index.py
+              f.write(html_out)
+          print("Generated index.html dengan " + str(len(clips)) + " klip video.")
+          '
 
       - name: Commit index.html to Main
         run: |
